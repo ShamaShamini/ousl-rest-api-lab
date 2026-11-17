@@ -64,6 +64,7 @@ jobs:
       - name: Build Docker Container
         working-directory: ${{ env.PROJECT_DIR }}
         run: |
+         ls -la
           docker build -t ousl-student-api:${{ github.sha }} .
 
       # 7. Trivy Security Scan
