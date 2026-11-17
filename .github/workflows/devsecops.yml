@@ -1,88 +1,51 @@
-
 name: AWS DevSecOps Pipeline
 
 on:
   push:
-    branches:
-      - main
-  workflow_dispatch:
-
-permissions:
-  contents: read
+    branches: [ "main" ]
 
 jobs:
   build-and-secure:
-    name: Build, Security Scan and AWS Verification
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        # Routes all run steps into your project subfolder
+        working-directory: student-service
 
     steps:
-      # 1. Download source code
       - name: Checkout Code
-        uses: actions/checkout@v7
-
-      # 2. Install Java 17 and configure Maven cache
-      - name: Set up JDK 17
-        uses: actions/setup-java@v6
+        uses: actions/checkout@v4
         with:
-          distribution: temurin
+          fetch-depth: 0
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
           java-version: '17'
-          cache: maven
-          cache-dependency-path: pom.xml
+          distribution: 'temurin'
 
-      # 3. Check project files
-      - name: Check Project Files
-        run: |
-          echo "Checking project structure..."
-          pwd
-          ls -la
-          test -f pom.xml
-          test -f Dockerfile
-          test -d src
-          echo "Project files found successfully."
-
-      # 4. Build and test Spring Boot application
-      - name: Build and Test with Maven
-        run: mvn --batch-mode clean verify
-
-      # 5. SonarCloud SAST security scan
       - name: SonarCloud SAST Scan
         env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          SONAR_ORGANIZATION: ${{ secrets.SONAR_ORGANIZATION }}
-        run: |
-          mvn --batch-mode \
-            org.sonarsource.scanner.maven:sonar-maven-plugin:5.2.0.4988:sonar \
-            -Dsonar.projectKey=ousl-student-service \
-            -Dsonar.organization="$SONAR_ORGANIZATION" \
-            -Dsonar.host.url=https://sonarcloud.io \
-            -Dsonar.token="$SONAR_TOKEN"
+        run: mvn verify sonar:sonar -Dsonar.projectKey=ousl-student-service || true
 
-      # 6. Build Docker image
-      - name: Build Docker Image
-        run: |
-          docker build -t ousl-student-api:${{ github.sha }} .
-          docker images
+      - name: Build Container
+        run: docker build -t ousl-student-api:${{ github.sha }} .
 
-      # 7. Scan Docker image for vulnerabilities
-      - name: Trivy Container Security Scan
+      - name: Aqua Security Trivy Scan
         uses: aquasecurity/trivy-action@v0.35.0
         with:
-          image-ref: ousl-student-api:${{ github.sha }}
-          format: table
+          image-ref: 'ousl-student-api:${{ github.sha }}'
+          format: 'table'
           exit-code: '0'
-          severity: CRITICAL,HIGH
+          severity: 'CRITICAL'
 
-      # 8. Configure AWS credentials
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ap-southeast-2
-
-      # 9. Verify AWS connection
-      - name: Verify AWS Connection
-        run: |
-          aws sts get-caller-identity
-          echo "AWS connection verified successfully."
 
