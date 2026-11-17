@@ -64,8 +64,8 @@ jobs:
       - name: Build Docker Container
         working-directory: ${{ env.PROJECT_DIR }}
         run: |
-         ls -la
-          docker build -t ousl-student-api:${{ github.sha }} .
+          ls -lh Dockerfile
+          docker build -f Dockerfile -t ousl-student-api:${{ github.sha }} .
 
       # 7. Trivy Security Scan
       - name: Aqua Security Trivy Scan
