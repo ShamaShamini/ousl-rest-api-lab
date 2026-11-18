@@ -1,3 +1,4 @@
+
 package lk.ousl.api;
 
 import java.util.List;
@@ -11,6 +12,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/students")
 public class StudentController {
+
     private final StudentRepository repository;
 
     public StudentController(StudentRepository repository) {
@@ -18,12 +20,29 @@ public class StudentController {
     }
 
     @GetMapping
-    public List<Student> getStudents() {
-        return repository.findAll();
+    public List<StudentDTO> getStudents() {
+        return repository.findAll()
+                .stream()
+                .map(student -> new StudentDTO(
+                        student.getId(),
+                        student.getName(),
+                        student.getCourse()))
+                .toList();
     }
 
     @PostMapping
-    public Student addStudent(@RequestBody Student student) {
-        return repository.save(student);
+    public StudentDTO addStudent(@RequestBody StudentDTO dto) {
+
+        Student student = new Student();
+
+        student.setName(dto.getName());
+        student.setCourse(dto.getCourse());
+
+        Student savedStudent = repository.save(student);
+
+        return new StudentDTO(
+                savedStudent.getId(),
+                savedStudent.getName(),
+                savedStudent.getCourse());
     }
 }
